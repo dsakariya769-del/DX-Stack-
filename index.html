@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DX Stack</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            background-color: #1a1a1a;
+            box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Game States: 'START', 'PLAYING', 'GAMEOVER'
+        let gameState = 'START';
+        let score = 0;
+        const blockHeight = 35; 
+        let cameraY = 0; // Camera ko track karne ke liye
+
+        let baseBlock = {
+            x: 100,
+            y: canvas.height - blockHeight,
+            width: 200,
+            color: "#ff4757" 
+        };
+
+        let stack = [baseBlock];
+
+        let currentBlock = {
+            x: 0,
+            y: canvas.height - (blockHeight * 2), 
+            width: 200,
+            speed: 3, 
+            color: "#1e90ff" 
+        };
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Target camera position (Taaki camera smoothly screen ke beech mein rahe)
+            let targetCameraY = (stack.length - 4) * blockHeight;
+            if (targetCameraY > 0) {
+                cameraY += (targetCameraY - cameraY) * 0.1; // Smooth scrolling effect
+            }
+
+            // Save the current drawing state
+            ctx.save();
+            // Poori screen ko cameraY ke hisab se shift karna
+            ctx.translate(0, cameraY);
+
+            // Draw stack blocks
+            for (let i = 0; i < stack.length; i++) {
+                let b = stack[i];
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, b.y, b.width, blockHeight);
+            }
+
+            // Draw moving block (Sirf jab game chal raha ho)
+            if (gameState === 'PLAYING') {
+                ctx.fillStyle = currentBlock.color;
+                ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.width, blockHeight);
+                
+                // Move block left and right
+                currentBlock.x += currentBlock.speed;
+                if (currentBlock.x + currentBlock.width > canvas.width || currentBlock.x < 0) {
+                    currentBlock.speed = -currentBlock.speed;
+                }
+            }
+
+            // Restore drawing state
+            ctx.restore();
+
+            // UI Elements (Inke upar camera ka asar nahi padega)
+            if (gameState === 'START') {
+                // Dim background
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Title
+                ctx.fillStyle = "#1e90ff";
+                ctx.font = "bold 50px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("DX Stack", canvas.width / 2, canvas.height / 2 - 50);
+
+                // Tap to play text
+                ctx.fillStyle = "white";
+                ctx.font = "20px Arial";
+                ctx.fillText("Tap anywhere to Play", canvas.width / 2, canvas.height / 2 + 20);
+            } 
+            else if (gameState === 'PLAYING') {
+                // Score Board
+                ctx.fillStyle = "white";
+                ctx.font = "bold 26px Arial";
+                ctx.textAlign = "left";
+                ctx.fillText("Score: " + score, 20, 40);
+            } 
+            else if (gameState === 'GAMEOVER') {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = "#ff4757";
+                ctx.font = "bold 45px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 30);
+                
+                ctx.fillStyle = "white";
+                ctx.font = "22px Arial";
+                ctx.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 15);
+                ctx.font = "18px Arial";
+                ctx.fillText("Tap to Restart", canvas.width / 2, canvas.height / 2 + 65);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnNextBlock(newWidth, newX) {
+            score++;
+            const colors = ["#2ecc71", "#f1c40f", "#e67e22", "#9b59b6", "#1abc9c", "#fd79a8"];
+            let randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+            let lastBlock = currentBlock;
+            lastBlock.width = newWidth;
+            lastBlock.x = newX;
+
+            currentBlock = {
+                x: Math.random() * (canvas.width - newWidth), // Random jagah se shuru hoga
+                y: lastBlock.y - blockHeight,
+                width: newWidth,
+                speed: (Math.abs(lastBlock.speed) + 0.3) * (Math.random() > 0.5 ? 1 : -1),
+                color: randomColor
+            };
+        }
+
+        window.addEventListener("pointerdown", () => {
+            if (gameState === 'START') {
+                gameState = 'PLAYING';
+                return;
+            }
+
+            if (gameState === 'GAMEOVER') {
+                // Reset game parameters
+                score = 0;
+                cameraY = 0;
+                baseBlock = { x: 100, y: canvas.height - blockHeight, width: 200, color: "#ff4757" };
+                stack = [baseBlock];
+                currentBlock = { x: 0, y: canvas.height - (blockHeight * 2), width: 200, speed: 3, color: "#1e90ff" };
+                gameState = 'PLAYING';
+                return;
+            }
+
+            let previousBlock = stack[stack.length - 1];
+            let difference = currentBlock.x - previousBlock.x;
+
+            if (Math.abs(difference) >= previousBlock.width) {
+                gameState = 'GAMEOVER';
+                return;
+            }
+
+            let newX, newWidth;
+
+            if (difference > 0) {
+                newX = currentBlock.x;
+                newWidth = previousBlock.width - difference;
+            } else {
+                newX = previousBlock.x;
+                newWidth = previousBlock.width + difference;
+            }
+
+            currentBlock.x = newX;
+            currentBlock.width = newWidth;
+            stack.push({
+                x: newX,
+                y: currentBlock.y,
+                width: newWidth,
+                color: currentBlock.color
+            });
+
+            spawnNextBlock(newWidth, newX);
+        });
+
+        gameLoop();
+    </script>
+
+</body>
+</html>
