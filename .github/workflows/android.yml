@@ -27,9 +27,14 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
+    - name: Create Web Directory and Move Files
+      run: |
+        mkdir www
+        cp index.html www/
+
     - name: Initialize Capacitor Android
       run: |
-        npx cap init "DX Stack" "com.dxstack.game" --web-dir=.
+        npx cap init "DX Stack" "com.dxstack.game" --web-dir=www
         npx cap add android
 
     - name: Sync Code to Android
