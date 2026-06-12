@@ -1,6 +1,5 @@
 {
   "appId": "com.dxstack.game",
   "appName": "DX Stack",
-  "webDir": ".",
-  "bundledWebRuntime": false
+  "webDir": "www"
 }
